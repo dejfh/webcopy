@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import CssBaseline from '@material-ui/core/CssBaseline';
-import Paper from '@material-ui/core/Paper';
-import Card from '@material-ui/core/Card';
 import Container from '@material-ui/core/Container';
 import { makeStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 import { Button, TextField } from '@material-ui/core';
+import { connectMirror } from './api';
+import QRCode from 'react-qr-code';
 
 const useStyles = makeStyles((theme) => ({
   main: {
@@ -22,14 +22,19 @@ const useStyles = makeStyles((theme) => ({
 function App() {
   const classes = useStyles();
 
-  const [responses, setResponses] = useState([] as string[])
+  const [response, setResponse] = useState('')
   const [toSend, setToSend] = useState('')
 
+  const connection = useMemo(() => connectMirror(msg => setResponse(msg)), [])
+
   const doSend = useMemo(() => () => {
-    responses.push(toSend)
-    setResponses(responses)
+    connection.send(toSend)
     setToSend('')
-  }, [ toSend ]);
+  }, [connection, toSend]);
+
+  const responseToClipboard = useMemo(() => () => {
+    navigator.clipboard.writeText(response)
+  }, [response])
 
   return (
     <Container component="main" className={classes.main} maxWidth="sm">
@@ -37,19 +42,24 @@ function App() {
       <Typography className={classes.item} variant="h4" component="h1">
         Websocket test
       </Typography>
+
+      <QRCode value="http://google.com" />
+
       <Typography className={classes.item} variant="h5" component="h2">
         Send something
       </Typography>
-      <TextField className={classes.item} label="What to send" multiline variant="outlined" style={{ width: "100%" }} 
-        value={toSend} onChange={e => setToSend(e.target.value)}/>
+      <TextField className={classes.item} label="What to send" multiline variant="outlined" style={{ width: "100%" }}
+        value={toSend} onChange={e => setToSend(e.target.value)} />
       <Button className={classes.submit} variant="contained" color="primary"
         onClick={() => doSend()}>Send</Button>
+
       <Typography className={classes.item} variant="h5" component="h2">
         You got something
       </Typography>
-      {responses.map(response => (
-        <Typography className={classes.item} variant="body1">{response}</Typography>
-      ))}
+      <TextField className={classes.item} label="Response" multiline variant="outlined" style={{ width: "100%" }}
+        value={response} InputProps={{ readOnly: true }} />
+      <Button className={classes.submit} variant="text" color="default"
+        onClick={() => responseToClipboard()}>copy</Button>
     </Container>
   );
 }
