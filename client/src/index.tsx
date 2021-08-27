@@ -1,11 +1,21 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
+import { AppState } from './AppState';
 import reportWebVitals from './reportWebVitals';
+
+const state = new AppState()
+
+const hash = window.location.hash
+if (hash.startsWith("#join=")) {
+  const t = hash.substring(6)
+  state.connect(t)
+  window.location.replace("#")
+}
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <App state={state} />
   </React.StrictMode>,
   document.getElementById('root')
 );

@@ -1,0 +1,32 @@
+@startuml protocol
+== Init ==
+Alice <-- Server: hello
+Alice --> Server: init
+Alice <-- Server: token
+Server --> Bob: hello
+Server <-- Bob: join
+Alice <-- Server: paired
+Server --> Bob: paired
+== Join error ==
+Server --> Bob: hello
+Server <-- Bob: join
+Server --> Bob: //disconnect//
+== Paired ==
+loop
+alt data from Alice
+Alice --> Server: data
+Server --> Bob: data
+else data from Bob
+Server <-- Bob: data
+Alice <-- Server: data
+end
+end
+== Shutdown ==
+alt Alice disconnects
+Alice --> Server: //disconnect//
+Server --> Bob: //disconnect//
+else Bob disconnects
+Server <-- Bob: //disconnect//
+Alice <-- Server: //disconnect//
+end
+@enduml

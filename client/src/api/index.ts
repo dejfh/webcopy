@@ -1,1 +1,1 @@
-export { Connection, connectMirror } from './Api';
+export { Connection, connect, State } from './Api';

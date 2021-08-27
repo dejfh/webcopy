@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -15,49 +14,22 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-type response struct {
-	Name string
-}
-
-func sayHello(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-
-	resp := response{Name: "Peter"}
-
-	json.NewEncoder(w).Encode(resp)
-}
-
-func mirror(w http.ResponseWriter, r *http.Request) {
+func relay(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 	}
 
-	log.Println("Client connected to mirror")
-
-	for {
-		messageType, data, err := ws.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		log.Println("I got some data!")
-
-		if err := ws.WriteMessage(messageType, data); err != nil {
-			log.Println(err)
-			return
-		}
-	}
+	handleRelay(ws)
 }
 
 func main() {
 	r := mux.NewRouter()
+	r.Path("/relay").HandlerFunc(relay)
+	http.Handle("/relay", r)
 
-	r.Path("/test").Methods("GET").HandlerFunc(sayHello)
-	r.Path("/mirror").HandlerFunc(mirror)
-
-	http.Handle("/", r)
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/", fs)
 
 	log.Println("Starting server...")
 	log.Fatal(http.ListenAndServe("localhost:8090", nil))
