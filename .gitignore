@@ -1,3 +1,5 @@
 .*
+!/.*
 /server/static
 /client/node_modules
+/client/build
