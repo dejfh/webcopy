@@ -96,7 +96,7 @@ function App(props: { state: AppState }) {
                 <Typography className={classes.margin} variant="body1">
                   Waiting for connection...
                 </Typography>
-                <QRCode className={classes.margin} value="joinUrl.toString()" />
+                <QRCode className={classes.margin} value={joinUrl.toString()} />
                 <Typography className={classes.margin} variant="body2">
                   <a href={joinUrl.toString()} target="_blank">{joinUrl.toString()}</a>
                 </Typography>

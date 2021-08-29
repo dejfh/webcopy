@@ -32,5 +32,5 @@ func main() {
 	http.Handle("/", fs)
 
 	log.Println("Starting server...")
-	log.Fatal(http.ListenAndServe("localhost:8090", nil))
+	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
 }
