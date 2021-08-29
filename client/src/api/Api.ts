@@ -137,6 +137,5 @@ export class Connection {
 }
 
 export function connect(receiver: Receiver, token?: string): Connection {
-    console.log("What??? " + (xy++))
     return new Connection(receiver, token)
 }
