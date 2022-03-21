@@ -13,8 +13,7 @@ import { FileCopy } from "@material-ui/icons";
 import clsx from "clsx";
 import React, { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
-import * as relay from "./api/relay/Api";
-import { AppState, AppStateEnum } from "./AppState";
+import { AppState, AppReadyState } from "./AppState";
 import { useBehaviorSubject } from "./hooks";
 
 const useStyles = makeStyles((theme) => ({
@@ -39,7 +38,6 @@ function App(props: { state: AppState }) {
 
   const [toSend, setToSend] = useState("");
 
-  const conn = useBehaviorSubject(props.state.conn);
   const response = useBehaviorSubject(props.state.response);
   const token = useBehaviorSubject(props.state.token);
   const connState = useBehaviorSubject(props.state.connState);
@@ -53,7 +51,7 @@ function App(props: { state: AppState }) {
   };
 
   const doSend = () => {
-    conn?.sendText(toSend);
+    props.state.sendText(toSend);
     setToSend("");
   };
 
@@ -74,7 +72,7 @@ function App(props: { state: AppState }) {
         Webcopy
       </Typography>
       <Paper className={classes.paper}>
-        {connState === AppStateEnum.NONE ? (
+        {connState === AppReadyState.NONE ? (
           <React.Fragment>
             <Typography className={classes.margin} variant="h6" component="h2">
               Start new session
@@ -110,12 +108,12 @@ function App(props: { state: AppState }) {
             </div>
           </React.Fragment>
         ) : null}
-        {connState > AppStateEnum.NONE && connState < relay.State.WAITING ? (
+        {connState > AppReadyState.NONE && connState < AppReadyState.WAITING ? (
           <Typography className={classes.margin} variant="body1">
             Connecting...
           </Typography>
         ) : null}
-        {connState === relay.State.WAITING ? (
+        {connState === AppReadyState.WAITING ? (
           token !== "" ? (
             <React.Fragment>
               <Typography className={classes.margin} variant="body1">
@@ -134,7 +132,7 @@ function App(props: { state: AppState }) {
             </Typography>
           )
         ) : null}
-        {conn && connState >= relay.State.PAIRED ? (
+        {connState >= AppReadyState.PAIRED ? (
           <React.Fragment>
             {response !== "" ? (
               <React.Fragment>
@@ -167,7 +165,7 @@ function App(props: { state: AppState }) {
                 />
               </React.Fragment>
             ) : null}
-            {connState === relay.State.PAIRED ? (
+            {connState === AppReadyState.PAIRED ? (
               <React.Fragment>
                 <Typography
                   className={classes.margin}
@@ -196,17 +194,18 @@ function App(props: { state: AppState }) {
                   </Button>
                 </div>
               </React.Fragment>
-            ) : (
+            ) : null}
+            {connState === AppReadyState.CLOSED ? (
               <Typography className={classes.margin} variant="body1">
                 Connection lost
               </Typography>
-            )}
+            ) : null}{" "}
+            {connState === AppReadyState.ERROR ? (
+              <Typography className={classes.margin} variant="body1">
+                Bad things happened
+              </Typography>
+            ) : null}
           </React.Fragment>
-        ) : null}
-        {!conn && connState >= relay.State.PAIRED ? (
-          <Typography className={classes.margin} variant="h6" component="h2">
-            Bad things happened.
-          </Typography>
         ) : null}
       </Paper>
     </Container>

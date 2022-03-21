@@ -3,7 +3,7 @@ import * as z from "zod";
 export const helloMessageSchema = z.object({
   type: z.literal("hello"),
   data: z.object({
-    protocol: z.string(),
+    protocol: z.literal("relay 1.0"),
   }),
 });
 export type HelloMessage = z.infer<typeof helloMessageSchema>;
@@ -15,7 +15,7 @@ export interface InitMessage {
 export const tokenMessageSchema = z.object({
   type: z.literal("token"),
   data: z.object({
-    token: z.string(),
+    token: z.string().min(1).max(1024),
   }),
 });
 export type TokenMessage = z.infer<typeof tokenMessageSchema>;

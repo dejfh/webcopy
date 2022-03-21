@@ -18,11 +18,10 @@ navigator.serviceWorker.register("service-worker.js");
 
 const x = async function () {
   try {
-    const publicKey = localStorage.getItem("webcopy_public");
     const registration = await navigator.serviceWorker.ready;
     const permissionState = await registration.pushManager.permissionState({
       userVisibleOnly: true,
-      applicationServerKey: null /* publicKey */,
+      applicationServerKey: null,
     });
     console.log("permissionState", permissionState);
     var subscription = await (async function () {
@@ -32,7 +31,7 @@ const x = async function () {
         }
         return await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: null /* publicKey */,
+          applicationServerKey: null,
         });
       } else {
         const r = await registration.pushManager.getSubscription();
@@ -41,22 +40,13 @@ const x = async function () {
           (await registration.pushManager.getSubscription()) ||
           (await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: null /* publicKey */,
+            applicationServerKey: null,
           }))
         );
       }
     })();
-    console.log("public key:", publicKey);
     console.log("subscription:", subscription);
     console.log("subscription JSON:", subscription.toJSON());
-    /* setTimeout(
-      () =>
-        webPush.sendNotification(
-          subscription.toJSON() as WebPushPushSubscription,
-          JSON.stringify({ type: "invitation", sessionId: "testId" })
-        ),
-      1000
-    ); */
   } catch (error) {
     console.error("something failed:", error);
   }
