@@ -1,23 +1,72 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import App from './App';
-import { AppState } from './AppState';
-import reportWebVitals from './reportWebVitals';
+import React from "react";
+import ReactDOM from "react-dom";
+import webPush, { PushSubscription as WebPushPushSubscription } from "web-push";
+import App from "./App";
+import { AppState } from "./AppState";
+import reportWebVitals from "./reportWebVitals";
 
-const state = new AppState()
+const state = new AppState();
 
-const hash = window.location.hash
+const hash = window.location.hash;
 if (hash.startsWith("#join=")) {
-  const t = hash.substring(6)
-  state.connect(t)
-  window.location.replace("#")
+  const t = hash.substring(6);
+  state.join(t);
+  window.location.replace("#");
 }
+
+navigator.serviceWorker.register("service-worker.js");
+
+const x = async function () {
+  try {
+    const publicKey = localStorage.getItem("webcopy_public");
+    const registration = await navigator.serviceWorker.ready;
+    const permissionState = await registration.pushManager.permissionState({
+      userVisibleOnly: true,
+      applicationServerKey: null /* publicKey */,
+    });
+    console.log("permissionState", permissionState);
+    var subscription = await (async function () {
+      if (permissionState !== "granted") {
+        if ((await Notification.requestPermission()) !== "granted") {
+          console.warn("Permission to send notifications denied");
+        }
+        return await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: null /* publicKey */,
+        });
+      } else {
+        const r = await registration.pushManager.getSubscription();
+        await r?.unsubscribe();
+        return (
+          (await registration.pushManager.getSubscription()) ||
+          (await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: null /* publicKey */,
+          }))
+        );
+      }
+    })();
+    console.log("public key:", publicKey);
+    console.log("subscription:", subscription);
+    console.log("subscription JSON:", subscription.toJSON());
+    /* setTimeout(
+      () =>
+        webPush.sendNotification(
+          subscription.toJSON() as WebPushPushSubscription,
+          JSON.stringify({ type: "invitation", sessionId: "testId" })
+        ),
+      1000
+    ); */
+  } catch (error) {
+    console.error("something failed:", error);
+  }
+}; /*()*/
 
 ReactDOM.render(
   <React.StrictMode>
     <App state={state} />
   </React.StrictMode>,
-  document.getElementById('root')
+  document.getElementById("root")
 );
 
 // If you want to start measuring performance in your app, pass a function
