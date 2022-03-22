@@ -1,21 +1,16 @@
 self.skipWaiting();
 
-var notifications = undefined;
-
-// Register event listener for the 'push' event.
 self.addEventListener("push", function (event) {
-  // Keep the service worker alive until the notification is created.
   var eventData = event.data.json();
-  var sessionId = eventData.sessionId;
-  if (eventData.type !== "invitation" || !sessionId) {
+  var token = eventData.token;
+  if (eventData.type !== "invitation" || !token) {
     return;
   }
   event.waitUntil(
-    // Show a notification with title 'ServiceWorker Cookbook' and body 'Alea iacta est'.
     self.registration.showNotification("Invitation to webcopy session", {
       data: {
         type: "invitation",
-        sessionId: sessionId,
+        token: token,
       },
     })
   );
@@ -23,10 +18,12 @@ self.addEventListener("push", function (event) {
 
 self.addEventListener("notificationclick", function (event) {
   if (event.notification.data.type === "invitation") {
-    var sessionId = event.notification.data.sessionId;
-    clients.openWindow(
-      "http://localhost:3000/#join=" + encodeURIComponent(sessionId)
-    );
+    var token = event.notification.data.token;
+    var url = new URL(self.location.href);
+    url.search = "";
+    url.pathname = "";
+    url.hash = "#join=" + encodeURIComponent(token);
+    clients.openWindow(url.href);
   }
   event.notification.close();
 });

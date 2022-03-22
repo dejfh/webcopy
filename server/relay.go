@@ -68,12 +68,15 @@ func handleRelay(ws *websocket.Conn) {
 	}
 
 	var otherWs *websocket.Conn
+	var token string = ""
 
 	switch inMsg.MsgType {
 	case "init":
-		otherWs, err = handleInit(ws, &inMsg)
+		otherWs, token, err = handleInit(ws, &inMsg)
+		defer log.Println("Closed A - " + token)
 	case "join":
-		otherWs, err = handleJoin(ws, &inMsg)
+		otherWs, token, err = handleJoin(ws, &inMsg)
+		defer log.Println("Closed B - " + token)
 	default:
 		log.Println("Unexpected first message type: " + inMsg.MsgType)
 		return
@@ -99,13 +102,15 @@ func handleRelay(ws *websocket.Conn) {
 	}
 }
 
-func handleInit(wsA *websocket.Conn, msg *InMessage) (*websocket.Conn, error) {
+func handleInit(wsA *websocket.Conn, msg *InMessage) (*websocket.Conn, string, error) {
 	token := uuid.NewString()
 
 	if err := sendToken(wsA, token); err != nil {
 		log.Println("Failed to answer init message: " + err.Error())
-		return nil, err
+		return nil, token, err
 	}
+
+	log.Println("Init - " + token)
 
 	wc := &WaitingConn{wsA: wsA}
 
@@ -116,7 +121,7 @@ func handleInit(wsA *websocket.Conn, msg *InMessage) (*websocket.Conn, error) {
 	updateReadDeadline(wsA)
 	messageType, data, err := wsA.ReadMessage()
 	if err != nil {
-		return nil, err
+		return nil, token, err
 	}
 
 	conMutex.Lock()
@@ -125,15 +130,16 @@ func handleInit(wsA *websocket.Conn, msg *InMessage) (*websocket.Conn, error) {
 	if wsB == nil {
 		delete(waitingConMap, token)
 		err = errors.New("received message before paired")
-		return nil, err
+		return nil, token, err
 	}
 	conMutex.Unlock()
 
 	err = wsB.WriteMessage(messageType, data)
-	return wsB, err
+
+	return wsB, token, err
 }
 
-func handleJoin(wsB *websocket.Conn, msg *InMessage) (*websocket.Conn, error) {
+func handleJoin(wsB *websocket.Conn, msg *InMessage) (*websocket.Conn, string, error) {
 	token := msg.Data.Token
 
 	conMutex.Lock()
@@ -142,12 +148,12 @@ func handleJoin(wsB *websocket.Conn, msg *InMessage) (*websocket.Conn, error) {
 	conMutex.Unlock()
 
 	if !ok {
-		return nil, errors.New("no waiting connection with given token")
+		return nil, token, errors.New("no waiting connection with given token")
 	}
 	wsA := wc.wsA
 
 	if err := sendPaired(wsB); err != nil {
-		return wsA, err
+		return wsA, token, err
 	}
 
 	conMutex.Lock()
@@ -155,7 +161,10 @@ func handleJoin(wsB *websocket.Conn, msg *InMessage) (*websocket.Conn, error) {
 	conMutex.Unlock()
 
 	err := sendPaired(wsA)
-	return wsA, err
+
+	log.Println("Paired - " + token)
+
+	return wsA, token, err
 }
 
 // read and send

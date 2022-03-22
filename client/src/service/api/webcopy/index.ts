@@ -33,6 +33,10 @@ export function sendText(ws: WebSocket, text: string) {
   send(ws, { type: "text", data: { text } });
 }
 
+export function sendCouple(ws: WebSocket, data: PushSubscriptionJSON) {
+  send(ws, { type: "couple", data });
+}
+
 function send(ws: WebSocket, msg: schema.WebcopyMessage) {
   ws.send(JSON.stringify(msg));
 }

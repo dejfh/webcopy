@@ -1,7 +1,9 @@
 import CancellationToken from "cancellationtoken";
 import { BehaviorSubject } from "rxjs";
-import * as relay from "./api/relay/Api";
-import * as webcopy from "./api/webcopy/Api";
+import * as relay from "./service/api/relay";
+import * as webcopy from "./service/api/webcopy";
+import * as invitePush from "./service/api/invitePush";
+import * as coupleStorage from "./service/api/coupleStorage";
 
 export enum AppReadyState {
   NONE = relay.RelayReadyState.MIN - 1,
@@ -20,6 +22,10 @@ export class AppState {
   public readonly response = new BehaviorSubject("");
   public readonly token = new BehaviorSubject("");
   public readonly connState = new BehaviorSubject(AppReadyState.NONE);
+  public readonly coupleOffer = new BehaviorSubject(
+    null as PushSubscriptionJSON | null
+  );
+  public readonly coupleStorage = coupleStorage.read();
 
   public cancel() {
     if (this.currentCancel) {
@@ -29,6 +35,7 @@ export class AppState {
     this.response.next("");
     this.token.next("");
     this.connState.next(AppReadyState.NONE);
+    this.coupleOffer.next(null);
   }
 
   public async init(): Promise<void> {
@@ -77,23 +84,46 @@ export class AppState {
     }
   }
 
+  public async sendCouple() {
+    if (!this.ws) {
+      return;
+    }
+    const subscriptionData = await invitePush.getPushSubscriptionData();
+    if (!this.ws) {
+      return;
+    }
+    webcopy.sendCouple(this.ws, subscriptionData);
+  }
+
+  public storeCouple(name: string) {
+    if (!this.coupleOffer.value) {
+      return;
+    }
+    coupleStorage.store(name, this.coupleOffer.value);
+    this.coupleOffer.next(null);
+  }
+
+  public invite(data: PushSubscriptionJSON, token: string) {
+    invitePush.invite(data, token);
+  }
+
   private async continue(ws: WebSocket, cancellationToken: CancellationToken) {
     this.ws = ws;
     await webcopy.loop(
       ws,
       (text) => this.response.next(text),
-      (coupleData) => {},
+      (coupleData) => this.coupleOffer.next(coupleData),
       cancellationToken
     );
     this.connState.next(AppReadyState.CLOSED);
   }
 
   private getUrl(): string {
-    const url = new URL(window.location.toString());
+    const url = new URL(window.location.href);
     url.protocol = url.protocol.replace("http", "ws");
     url.search = "";
-    url.hash = "";
     url.pathname = "relay";
-    return url.toString();
+    url.hash = "";
+    return url.href;
   }
 }

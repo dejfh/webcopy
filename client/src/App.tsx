@@ -13,7 +13,7 @@ import { FileCopy } from "@material-ui/icons";
 import clsx from "clsx";
 import React, { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
-import { AppState, AppReadyState } from "./AppState";
+import { AppReadyState, AppState } from "./AppState";
 import { useBehaviorSubject } from "./hooks";
 
 const useStyles = makeStyles((theme) => ({
@@ -37,10 +37,12 @@ function App(props: { state: AppState }) {
   const classes = useStyles();
 
   const [toSend, setToSend] = useState("");
+  const [coupleName, setCoupleName] = useState("");
 
   const response = useBehaviorSubject(props.state.response);
   const token = useBehaviorSubject(props.state.token);
   const connState = useBehaviorSubject(props.state.connState);
+  const coupleOffer = useBehaviorSubject(props.state.coupleOffer);
 
   const doInit = () => {
     props.state.init();
@@ -125,6 +127,18 @@ function App(props: { state: AppState }) {
                   {joinUrl.toString()}
                 </a>
               </Typography>
+              {props.state.coupleStorage.map((item) => (
+                <div style={{ display: "flex", alignItems: "end" }}>
+                  <Button
+                    style={{ flexGrow: 0 }}
+                    onClick={() => {
+                      props.state.invite(item.data, token);
+                    }}
+                  >
+                    {item.name}
+                  </Button>
+                </div>
+              ))}
             </React.Fragment>
           ) : (
             <Typography className={classes.margin} variant="body1">
@@ -165,6 +179,36 @@ function App(props: { state: AppState }) {
                 />
               </React.Fragment>
             ) : null}
+            {coupleOffer ? (
+              <React.Fragment>
+                <Typography
+                  className={classes.margin}
+                  variant="h6"
+                  component="h2"
+                >
+                  You received a couple offer
+                </Typography>
+                <div style={{ display: "flex", alignItems: "end" }}>
+                  <TextField
+                    className={classes.margin}
+                    label="Name"
+                    multiline
+                    style={{ flexGrow: 1 }}
+                    value={coupleName}
+                    onChange={(e) => setCoupleName(e.target.value)}
+                  />
+                  <Button
+                    className={classes.margin}
+                    variant="contained"
+                    color="primary"
+                    style={{ flexGrow: 0 }}
+                    onClick={() => props.state.storeCouple(coupleName)}
+                  >
+                    Store
+                  </Button>
+                </div>
+              </React.Fragment>
+            ) : null}
             {connState === AppReadyState.PAIRED ? (
               <React.Fragment>
                 <Typography
@@ -174,7 +218,7 @@ function App(props: { state: AppState }) {
                 >
                   Send something
                 </Typography>
-                <div style={{ display: "flex", alignItems: "flex-end" }}>
+                <div style={{ display: "flex", alignItems: "end" }}>
                   <TextField
                     className={classes.margin}
                     label="What to send"
@@ -191,6 +235,17 @@ function App(props: { state: AppState }) {
                     onClick={() => doSend()}
                   >
                     Send
+                  </Button>
+                </div>
+                <div style={{ display: "flex", justifyContent: "end" }}>
+                  <Button
+                    className={classes.margin}
+                    variant="contained"
+                    color="primary"
+                    style={{ flexGrow: 0 }}
+                    onClick={() => props.state.sendCouple()}
+                  >
+                    Couple
                   </Button>
                 </div>
               </React.Fragment>

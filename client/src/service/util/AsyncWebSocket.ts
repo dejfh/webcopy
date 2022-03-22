@@ -2,29 +2,27 @@ import CancellationToken from "cancellationtoken";
 import * as z from "zod";
 import { withCancel } from "./WithCancel";
 
-function unexpectedMessageHandler(ws: WebSocket): (ev: MessageEvent) => void {
-  return (ev) => {
-    console.error("Received unexpected message, closing WebSocket.");
-    ws.close();
-  };
-}
-
 export function createWebSocket(
   url: string,
   cancellationToken: CancellationToken
 ): Promise<WebSocket> {
   return withCancel(cancellationToken, (resolve, reject, onCancelled) => {
     const ws = new WebSocket(url);
+
+    onCancelled(() => ws.close());
     ws.onopen = () => {
-      ws.onopen = null;
-      ws.onclose = null;
-      ws.onerror = null;
+      resetHandlers(ws);
       resolve(ws);
     };
-    ws.onclose = () => reject();
     ws.onmessage = unexpectedMessageHandler(ws);
-    ws.onerror = () => reject(new Error("WebSocket error."));
-    onCancelled(() => ws.close());
+    ws.onclose = () => {
+      resetHandlers(ws);
+      reject();
+    };
+    ws.onerror = () => {
+      resetHandlers(ws);
+      reject(new Error("WebSocket error."));
+    };
   });
 }
 
@@ -34,25 +32,20 @@ export function nextMessageEvent(
 ): Promise<MessageEvent> {
   return withCancel(cancellationToken, (resolve, reject, onCancelled) => {
     if (ws.readyState !== WebSocket.OPEN) {
-      reject(new Error("WebSocket not open."));
+      reject(new Error(`WebSocket not open, state was ${ws.readyState}.`));
     }
+
     onCancelled(() => ws.close());
     ws.onmessage = (ev) => {
-      ws.onmessage = unexpectedMessageHandler(ws);
-      ws.onclose = null;
-      ws.onerror = null;
+      resetHandlers(ws);
       resolve(ev);
     };
     ws.onclose = () => {
-      ws.onmessage = unexpectedMessageHandler(ws);
-      ws.onclose = null;
-      ws.onerror = null;
+      resetHandlers(ws);
       reject();
     };
     ws.onerror = () => {
-      ws.onmessage = unexpectedMessageHandler(ws);
-      ws.onclose = null;
-      ws.onerror = null;
+      resetHandlers(ws);
       reject(new Error("WebSocket error."));
     };
   });
@@ -65,4 +58,22 @@ export async function nextMessage<T>(
 ): Promise<T> {
   const ev = await nextMessageEvent(ws, cancellationToken);
   return schema.parse(JSON.parse(ev.data));
+}
+
+function resetHandlers(ws: WebSocket): void {
+  ws.onopen = null;
+  ws.onmessage = unexpectedMessageHandler(ws);
+  ws.onclose = null;
+  ws.onerror = null;
+}
+
+function unexpectedMessageHandler(ws: WebSocket): (ev: MessageEvent) => void {
+  return (_) => {
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onclose = null;
+    ws.onerror = null;
+    console.error("Received unexpected message, closing WebSocket.");
+    ws.close();
+  };
 }
