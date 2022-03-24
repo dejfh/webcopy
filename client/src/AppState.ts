@@ -1,9 +1,10 @@
 import CancellationToken from "cancellationtoken";
 import { BehaviorSubject } from "rxjs";
+import * as coupleStorage from "./service/api/coupleStorage";
+import * as invitePush from "./service/api/invitePush";
+import { InvitePushData } from "./service/api/invitePush/schema";
 import * as relay from "./service/api/relay";
 import * as webcopy from "./service/api/webcopy";
-import * as invitePush from "./service/api/invitePush";
-import * as coupleStorage from "./service/api/coupleStorage";
 
 export enum AppReadyState {
   NONE = relay.RelayReadyState.MIN - 1,
@@ -23,7 +24,7 @@ export class AppState {
   public readonly token = new BehaviorSubject("");
   public readonly connState = new BehaviorSubject(AppReadyState.NONE);
   public readonly coupleOffer = new BehaviorSubject(
-    null as PushSubscriptionJSON | null
+    null as InvitePushData | null
   );
   public readonly coupleStorage = coupleStorage.read();
 
@@ -88,11 +89,11 @@ export class AppState {
     if (!this.ws) {
       return;
     }
-    const subscriptionData = await invitePush.getPushSubscriptionData();
+    const invitePushData = await invitePush.getInvitePushData();
     if (!this.ws) {
       return;
     }
-    webcopy.sendCouple(this.ws, subscriptionData);
+    webcopy.sendCouple(this.ws, invitePushData);
   }
 
   public storeCouple(name: string) {
@@ -103,7 +104,7 @@ export class AppState {
     this.coupleOffer.next(null);
   }
 
-  public invite(data: PushSubscriptionJSON, token: string) {
+  public invite(data: InvitePushData, token: string) {
     invitePush.invite(data, token);
   }
 

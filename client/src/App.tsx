@@ -127,8 +127,8 @@ function App(props: { state: AppState }) {
                   {joinUrl.toString()}
                 </a>
               </Typography>
-              {props.state.coupleStorage.map((item) => (
-                <div style={{ display: "flex", alignItems: "end" }}>
+              {props.state.coupleStorage.map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "end" }}>
                   <Button
                     style={{ flexGrow: 0 }}
                     onClick={() => {

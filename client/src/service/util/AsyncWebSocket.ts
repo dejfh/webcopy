@@ -30,11 +30,12 @@ export function nextMessageEvent(
   ws: WebSocket,
   cancellationToken: CancellationToken
 ): Promise<MessageEvent> {
+  if (ws.readyState !== WebSocket.OPEN) {
+    return Promise.reject(
+      new Error(`WebSocket not open, state was ${ws.readyState}.`)
+    );
+  }
   return withCancel(cancellationToken, (resolve, reject, onCancelled) => {
-    if (ws.readyState !== WebSocket.OPEN) {
-      reject(new Error(`WebSocket not open, state was ${ws.readyState}.`));
-    }
-
     onCancelled(() => ws.close());
     ws.onmessage = (ev) => {
       resetHandlers(ws);
@@ -58,6 +59,14 @@ export async function nextMessage<T>(
 ): Promise<T> {
   const ev = await nextMessageEvent(ws, cancellationToken);
   return schema.parse(JSON.parse(ev.data));
+}
+
+export async function* messagesTillClosed<T>(
+  ws: WebSocket,
+  schema: z.Schema<T>,
+  cancellationToken: CancellationToken
+) : AsyncGenerator<string, void> {
+  yield Promise.resolve("hello");
 }
 
 function resetHandlers(ws: WebSocket): void {

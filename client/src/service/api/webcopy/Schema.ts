@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { invitePushDataSchema } from "../invitePush/schema";
 
 export const textMessageSchema = z.object({
   type: z.literal("text"),
@@ -10,11 +11,7 @@ export type TextMessage = z.infer<typeof textMessageSchema>;
 
 export const coupleMessageSchema = z.object({
   type: z.literal("couple"),
-  data: z.object({
-    endpoint: z.string().optional(),
-    expirationTime: z.number().optional().nullable(),
-    keys: z.record(z.string()).optional(),
-  }),
+  data: invitePushDataSchema,
 });
 export type CoupleMessage = z.infer<typeof coupleMessageSchema>;
 

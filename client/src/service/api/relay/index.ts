@@ -1,6 +1,6 @@
 import CancellationToken from "cancellationtoken";
 import { createWebSocket, nextMessage } from "../../util/AsyncWebSocket";
-import * as schema from "./Schema";
+import * as schema from "./schema";
 
 export enum RelayReadyState {
   MIN = 1,

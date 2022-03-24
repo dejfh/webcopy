@@ -1,6 +1,7 @@
 import CancellationToken from "cancellationtoken";
 import { nextMessage } from "../../util/AsyncWebSocket";
-import * as schema from "./Schema";
+import { InvitePushData } from "./../invitePush/schema";
+import * as schema from "./schema";
 
 export async function loop(
   ws: WebSocket,
@@ -33,7 +34,7 @@ export function sendText(ws: WebSocket, text: string) {
   send(ws, { type: "text", data: { text } });
 }
 
-export function sendCouple(ws: WebSocket, data: PushSubscriptionJSON) {
+export function sendCouple(ws: WebSocket, data: InvitePushData) {
   send(ws, { type: "couple", data });
 }
 
