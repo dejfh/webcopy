@@ -1,10 +1,9 @@
-import CancellationToken from "cancellationtoken";
 import { BehaviorSubject } from "rxjs";
-import * as coupleStorage from "./service/api/coupleStorage";
-import * as invitePush from "./service/api/invitePush";
-import { InvitePushData } from "./service/api/invitePush/schema";
-import * as relay from "./service/api/relay";
-import * as webcopy from "./service/api/webcopy";
+import * as coupleStorage from "./api/coupleStorage";
+import * as invitePush from "./api/invitePush";
+import { InvitePushData } from "./api/invitePush/schema";
+import * as relay from "./api/relay";
+import * as webcopy from "./api/webcopy";
 
 export enum AppReadyState {
   NONE = relay.RelayReadyState.MIN - 1,
@@ -18,7 +17,7 @@ export enum AppReadyState {
 }
 
 export class AppState {
-  private currentCancel: ((reason?: any) => void) | null = null;
+  private abortController?: AbortController;
   private ws: WebSocket | null = null;
   public readonly response = new BehaviorSubject("");
   public readonly token = new BehaviorSubject("");
@@ -29,10 +28,11 @@ export class AppState {
   public readonly coupleStorage = coupleStorage.read();
 
   public cancel() {
-    if (this.currentCancel) {
-      this.currentCancel();
-      this.currentCancel = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = undefined;
     }
+    this.ws = null;
     this.response.next("");
     this.token.next("");
     this.connState.next(AppReadyState.NONE);
@@ -41,18 +41,17 @@ export class AppState {
 
   public async init(): Promise<void> {
     this.cancel();
-    const cancellation = CancellationToken.create();
-    this.currentCancel = cancellation.cancel;
+    this.abortController = new AbortController();
 
     try {
       const ws = await relay.init(
         this.getUrl(),
         (token) => this.token.next(token),
         (state) => this.connState.next(state as number as AppReadyState),
-        cancellation.token
+        this.abortController.signal
       );
 
-      await this.continue(ws, cancellation.token);
+      await this.continue(ws, this.abortController.signal);
     } catch (err) {
       this.connState.next(AppReadyState.ERROR);
       console.error("Failed to init.", err);
@@ -61,18 +60,17 @@ export class AppState {
 
   public async join(token: string): Promise<void> {
     this.cancel();
-    const cancellation = CancellationToken.create();
-    this.currentCancel = cancellation.cancel;
+    this.abortController = new AbortController();
 
     try {
       const ws = await relay.join(
         this.getUrl(),
         token,
         (state) => this.connState.next(state as number as AppReadyState),
-        cancellation.token
+        this.abortController.signal
       );
 
-      await this.continue(ws, cancellation.token);
+      await this.continue(ws, this.abortController.signal);
     } catch (err) {
       this.connState.next(AppReadyState.ERROR);
       console.log("Failed to join.", err);
@@ -108,15 +106,19 @@ export class AppState {
     invitePush.invite(data, token);
   }
 
-  private async continue(ws: WebSocket, cancellationToken: CancellationToken) {
-    this.ws = ws;
-    await webcopy.loop(
-      ws,
-      (text) => this.response.next(text),
-      (coupleData) => this.coupleOffer.next(coupleData),
-      cancellationToken
-    );
-    this.connState.next(AppReadyState.CLOSED);
+  private async continue(ws: WebSocket, signal?: AbortSignal) {
+    try {
+      this.ws = ws;
+      await webcopy.loop(
+        ws,
+        (text) => this.response.next(text),
+        (coupleData) => this.coupleOffer.next(coupleData),
+        signal
+      );
+    } finally {
+      ws.close();
+      this.connState.next(AppReadyState.CLOSED);
+    }
   }
 
   private getUrl(): string {

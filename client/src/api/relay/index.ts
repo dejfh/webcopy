@@ -1,4 +1,3 @@
-import CancellationToken from "cancellationtoken";
 import { createWebSocket, nextMessage } from "../../util/AsyncWebSocket";
 import * as schema from "./schema";
 
@@ -17,24 +16,28 @@ export async function init(
   url: string,
   ontoken: (token: string) => void,
   onstate: (state: RelayReadyState) => void,
-  cancellationToken: CancellationToken
+  signal?: AbortSignal
 ): Promise<WebSocket> {
   onstate(RelayReadyState.CONNECTING);
-  const ws = await createWebSocket(url, cancellationToken);
+
+  const ws = await createWebSocket(url, signal);
+
   onstate(RelayReadyState.CONNECTED);
-  await nextMessage(ws, schema.helloMessageSchema, cancellationToken);
+
+  await nextMessage(ws, schema.helloMessageSchema, signal);
+
   send(ws, { type: "init" });
   onstate(RelayReadyState.INITIATING);
+
   {
-    const msg = await nextMessage(
-      ws,
-      schema.tokenMessageSchema,
-      cancellationToken
-    );
+    const msg = await nextMessage(ws, schema.tokenMessageSchema, signal);
+
     onstate(RelayReadyState.WAITING);
     ontoken(msg.data.token);
   }
-  await nextMessage(ws, schema.pairedMessageSchema, cancellationToken);
+
+  await nextMessage(ws, schema.pairedMessageSchema, signal);
+
   onstate(RelayReadyState.PAIRED);
   return ws;
 }
@@ -43,15 +46,21 @@ export async function join(
   url: string,
   token: string,
   onstate: (state: RelayReadyState) => void,
-  cancellationToken: CancellationToken
+  signal?: AbortSignal
 ): Promise<WebSocket> {
   onstate(RelayReadyState.CONNECTING);
-  const ws = await createWebSocket(url, cancellationToken);
+
+  const ws = await createWebSocket(url, signal);
+
   onstate(RelayReadyState.CONNECTED);
-  await nextMessage(ws, schema.helloMessageSchema, cancellationToken);
+
+  await nextMessage(ws, schema.helloMessageSchema, signal);
+
   send(ws, { type: "join", data: { token } });
   onstate(RelayReadyState.WAITING);
-  await nextMessage(ws, schema.pairedMessageSchema, cancellationToken);
+
+  await nextMessage(ws, schema.pairedMessageSchema, signal);
+
   onstate(RelayReadyState.PAIRED);
   return ws;
 }
