@@ -3,6 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
+	"net/http/httputil"
+
+	"flag"
+	"net/url"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -24,13 +28,29 @@ func relay(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	addr := flag.String("addr", "0.0.0.0:8080", "server listens on this address")
+	staticDir := flag.String("staticDir", "./static", "path to serve static files from")
+	proxy := flag.String("proxy", "", "redirect to this url")
+
+	flag.Parse()
+
 	r := mux.NewRouter()
 	r.Path("/relay").HandlerFunc(relay)
 	http.Handle("/relay", r)
 
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/", fs)
+	if *proxy == "" {
+		fs := http.FileServer(http.Dir(*staticDir))
+		http.Handle("/", fs)
+	}
+	if *proxy != "" {
+		url, err := url.Parse(*proxy)
+		if err != nil {
+			log.Fatalln("Could not parse proxy url.", err)
+		}
+		rproxy := httputil.NewSingleHostReverseProxy(url)
+		http.Handle("/", rproxy)
+	}
 
 	log.Println("Starting server...")
-	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
